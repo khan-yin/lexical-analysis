@@ -11,7 +11,8 @@ struct status{
 };
 
 vector<status> state_set; //初始状态集
-vector<vector<status>> result_set; //化简状态集合
+vector<vector<status>> simp_set; //化简状态集合
+vector<status> result_set; //最简DFA
 
 //读取数据行
 void read(){
@@ -36,7 +37,6 @@ void read(){
                     }
                 }
             }
-            
             state_set.push_back(state); //加入到状态集
         }else{
             break;
@@ -46,8 +46,11 @@ void read(){
 
 //测试数据读取
 void test(){
-    string lines[] = {"X X-a->0 X-b->1","Y Y-a->0 Y-b->1","0 0-a->0 0-b->2",
-                      "1 1-a->0 1-b->1","2 2-a->0 2-b->Y"};
+    string lines[] = {"X X-a->0 X-b->1",
+                      "Y Y-a->0 Y-b->1",
+                      "0 0-a->0 0-b->2",
+                      "1 1-a->0 1-b->1",
+                      "2 2-a->0 2-b->Y"};
 
     for(int k = 0; k < 5; k++){
         string line = lines[k];
@@ -70,8 +73,8 @@ void test(){
 int changeTo(status state,int letter){
     char change = state.change.at(letter);
 
-    for(int k = 0; k < result_set.size(); k++){
-        vector<status> set = result_set.at(k);
+    for(int k = 0; k < simp_set.size(); k++){
+        vector<status> set = simp_set.at(k);
         for(int i = 0; i < set.size(); i++){
             if(set.at(i).name == change){
                 return k;
@@ -81,7 +84,7 @@ int changeTo(status state,int letter){
     return -1;
 }
 
-//DFN化简
+//DFA化简
 void simplify(){
     //初始状态
     vector<status> set; //非终态集
@@ -95,17 +98,17 @@ void simplify(){
     }
 
     //将两个状态集加入
-    result_set.push_back(set);
-    result_set.push_back(end_set);
+    simp_set.push_back(set);
+    simp_set.push_back(end_set);
 
-    //开始化简
+    //DFA化简
     while(true){
         bool finish = true; //标记是否已全部分割完成
         vector<vector<status>> new_res; //存储每次得到的结果集
-        int length = result_set.size();
+        int length = simp_set.size();
         
         for(int i = 0; i < length; i++){
-            vector<status> set = result_set.at(i);
+            vector<status> set = simp_set.at(i);
             //统计转换集
             status first = set.at(0); //第一个状态作为标准
             vector<status> temp = set;
@@ -132,39 +135,54 @@ void simplify(){
                 new_res.push_back(another);
 
         }
-        result_set = new_res;
+        simp_set = new_res;
     }
 }
 
 int main(){
     //test();
     read();
-    for(int i = 0; i < state_set.size(); i++){
+    /*for(int i = 0; i < state_set.size(); i++){
         status state = state_set.at(i);
         cout << state.name << " ";
         for(int j = 0; j < state.accept.size(); j++){
             cout << state.name << "-" << state.accept.at(j) << "->" << state.change.at(j) << " ";
         }
         cout << endl;
-    }
-
-    //输出最终化简结果
-    /*
+    }*/
+    
     simplify();
-    for(int i = 0; i < state_set.size(); i++){
+
+    //将最终化简的状态集转化为一个个单独的状态
+    for(int i = 0; i < state_set.size(); i++){ //按照初始读入的顺序存入结果
         char name = state_set.at(i).name;
-        for(int p = 0; p < result_set.size(); p++){
-            vector<status> st = result_set.at(p);
+
+        for(int p = 0; p < simp_set.size(); p++){
+            vector<status> st = simp_set.at(p);
             status s = st.at(0);
-            if(s.name == name){
-                cout << s.name << " ";
+            if(s.name == name){ //找到与初始一致的状态集
+                status new_state;
+                new_state.name = s.name;
                 for(int r = 0; r < s.accept.size(); r++){
-                    cout << s.name << "-" << s.accept.at(r) << "->" << s.change.at(r) << " ";
+                    new_state.accept.push_back(s.accept.at(r));
+                    int k = changeTo(s,r);
+                    new_state.change.push_back(simp_set.at(k).at(0).name); //存入对应的转换状态名
                 }
-                cout << endl;
+                result_set.push_back(new_state); //将转化好的状态存入最简DFA结果集中
+                break;
             }
         }
     }
-    */
+
+    //输出最简DFA
+    for(int i = 0; i < result_set.size(); i++){
+        status state = result_set.at(i);
+        cout << state.name << " ";
+        for(int j = 0; j < state.accept.size(); j++){
+            cout << state.name << "-" << state.accept.at(j) << "->" << state.change.at(j) << " ";
+        }
+        cout << endl;
+    }
+    
     return 0;
 }
